@@ -114,7 +114,6 @@ def googleDisconnect():
 
     return {"response": "Successfully disconnected.", "status": 200}
 
-
 def facebookConnect(token):
     h = httplib2.Http()
     app_id = json.loads(open('client_secrets/facebook.json', 'r').read())[
@@ -164,7 +163,6 @@ def facebookConnect(token):
 
     return {"response": "Login Successful.", "status": 200}
 
-
 def facebookDisconnect():
     url = 'https://graph.facebook.com/%s/permissions?access_token=%s' % (
         login_session['user_id'], login_session['access_token'])
@@ -176,7 +174,6 @@ def facebookDisconnect():
             "status": 400}
 
     return {"response": "Successfully disconnected.", "status": 200}
-
 
 def githubConnect(token):
     h = httplib2.Http()
@@ -211,13 +208,11 @@ def githubConnect(token):
 
     return {"response": "Login Successful.", "status": 200}
 
-
 def serializeItem(item):
     ret = item.serialize
     ret['image'] = url_for('uploaded_file', filename=ret['image'], \
         _external=True)
     return ret
-
 
 @app.route('/images/<filename>')
 def uploaded_file(filename):
@@ -227,15 +222,18 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'],
                                filename)
 
-
 @app.route('/login')
 def showLogin():
     if 'username' in login_session:
         return redirect(url_for('displayItems'))
 
     login_session['state'] = randomToken()
-    return render_template('login.html.j2', STATE=login_session['state'], login_session=login_session)
+    client_id = {}
+    client_id['google'] = json.loads(open('client_secrets/google.json', 'r').read())['web']['client_id']
+    client_id['facebook'] = json.loads(open('client_secrets/facebook.json', 'r').read())['web']['app_id']
+    client_id['github'] = json.loads(open('client_secrets/github.json', 'r').read())['client_id']
 
+    return render_template('login.html.j2', STATE=login_session['state'], login_session=login_session, client_id)
 
 @app.route('/acctconnect', methods=['POST'])
 def acctConnect():
@@ -262,7 +260,6 @@ def acctConnect():
     response.headers['Content-Type'] = 'application/json'
     return response
 
-
 @app.route('/acctdisconnect')
 def acctDisconnect():
 
@@ -286,7 +283,6 @@ def acctDisconnect():
 
     return redirect(url_for('displayItems'))
 
-
 @app.route('/ghcallback')
 def ghCallback():
     ret = '<script>'\
@@ -296,7 +292,6 @@ def ghCallback():
         '</script>'
 
     return ret
-
 
 @app.route('/')
 @app.route('/<endpoint>')
@@ -319,7 +314,6 @@ def displayItems(endpoint=None):
         'display_items.html.j2', cats=cats, items=items,
         title_text=title_text, cat_name="", login_session=login_session)
 
-
 @app.route('/catalog/<int:cat_id>/')
 @app.route('/catalog/<int:cat_id>/<endpoint>')
 def displaySingleCatItems(cat_id, endpoint=None):
@@ -340,7 +334,6 @@ def displaySingleCatItems(cat_id, endpoint=None):
         'display_items.html.j2', cats=cats, items=items,
         title_text=title_text, cat_name=curr_cat.name, login_session=login_session)
 
-
 @app.route('/item/<int:item_id>/')
 @app.route('/item/<int:item_id>/<endpoint>')
 def displayItemDetails(item_id, endpoint=None):
@@ -352,7 +345,6 @@ def displayItemDetails(item_id, endpoint=None):
 
     login_session['_csrf_token'] = randomToken()
     return render_template('item_details.html.j2', item=item, login_session=login_session)
-
 
 @app.route('/item/<int:item_id>/edit',
            methods=['GET', 'POST'])
@@ -400,7 +392,6 @@ def editItem(item_id):
 
         return render_template('item_edit.html.j2', cats=cats, item=item, login_session=login_session)
 
-
 @app.route('/item/add', methods=['GET', 'POST'])
 def addItem():
     if 'username' not in login_session:
@@ -429,7 +420,6 @@ def addItem():
         login_session['_csrf_token'] = randomToken()
         return render_template('item_edit.html.j2', cats=cats, item=None, login_session=login_session)
 
-
 @app.route('/item/<int:item_id>/delete',
            methods=['POST'])
 def deleteItem(item_id):
@@ -450,7 +440,6 @@ def deleteItem(item_id):
     session.commit()
 
     return redirect(url_for('displayItems'))
-
 
 if __name__ == '__main__':
     app.secret_key = '1GrSamWXZ8ikGhg43UIUbw5X'

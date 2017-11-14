@@ -38,7 +38,7 @@
         <button class="btn btn-sm btn-primary btn-lg btn-login">
           <span class="g-signin"
             data-scope="openid email"
-            data-clientid="73238435638-ehebh00qps4cr2unhikf24hudbvplh91.apps.googleusercontent.com"
+            data-clientid="{{client_id['google']}}"
             data-redirecturi="postmessage"
             data-accesstype="offline"
             data-cookiepolicy="single_host_origin"
@@ -81,7 +81,7 @@
     //======FB Script
     window.fbAsyncInit = function() {
       FB.init({
-        appId      : '1732132623761642',
+        appId      : "{{client_id['facebook']}}",
         cookie     : true,  // enable cookies to allow the server to access
                             // the session
         xfbml      : true,  // parse social plugins on this page
@@ -134,7 +134,7 @@
 
     	window.open('https://github.com' +
     		'/login/oauth/authorize' +
-    		'?client_id=e6789cd05a49a53a00b6' +
+    		'?client_id={{client_id["github"]}}' +
     		'&scope=user',"GithubLogin", strWindowFeatures);
     });
 
