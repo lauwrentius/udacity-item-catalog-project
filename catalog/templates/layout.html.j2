@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='styles.css') }}">
+  <title>{% block title %}{% endblock %}- Catalog App</title>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="header-bar bg-primary">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-4">
+          <h1><a href="{{url_for('displayItems')}}">Catalog App</a></h1>
+        </div>
+        <div class="col-xs-8 login-session-col text-right">
+          {% if login_session.username %}
+            <img class="avatar" src="{{login_session.picture}}" />
+            <div>
+              Welcome, {{login_session.username}}<br />
+              <a class="text-muted" href="{{url_for('acctDisconnect')}}">Logout</a>
+            </div>
+          {% else %}
+            <a href="{{url_for('showLogin')}}">Login</a>
+          {% endif %}
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </div>
+  <p>{#{dict(login_session)|tojson}#}</p>
+
+  <div class="container panel panel-default">
+    <div class="row">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  {% block footer %}{% endblock %}
+
+  <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  {% block js %}{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="google-signin-client_id" content="73238435638-ehebh00qps4cr2unhikf24hudbvplh91.apps.googleusercontent.com">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <link rel=stylesheet type=text/css href="{{ url_for('static', filename='styles.css') }}">
+
+  <title>{% block title %}{% endblock %}- Catalog App</title>
+
+  <!--LOAD PRE-REQUISITES FOR GOOGLE SIGN IN -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+  <script src="//apis.google.com/js/platform.js?onload=start" async defer></script>
+
+</head>
+<body>
+  {% include 'svg_defs.html.j2' %}
+
+  <div class="header-bar bg-primary">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12">
+          <h1><a href="{{url_for('displayItems')}}">Catalog App</a></h1>
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="container panel panel-default">
+    <div class="row panel-body">
+      <div class="col-xs-12">
+        <h2>Login</h2>
+        <hr />
+
+        <button class="btn btn-sm btn-primary btn-lg btn-login">
+          <span class="g-signin"
+            data-scope="openid email"
+            data-clientid="73238435638-ehebh00qps4cr2unhikf24hudbvplh91.apps.googleusercontent.com"
+            data-redirecturi="postmessage"
+            data-accesstype="offline"
+            data-cookiepolicy="single_host_origin"
+            data-callback="signInCallback"
+            data-approvalprompt="force">
+          <svg class="icon icon-google-plus">
+            <use xlink:href="#icon-google-plus"></use>
+          </svg>
+          Login with Google
+          </span>
+        </button>&nbsp;
+
+        <button onclick='javascript:fb_login()' class="btn btn-sm btn-primary btn-lg btn-login">
+          <svg class="icon icon-facebook">
+            <use xlink:href="#icon-facebook"></use>
+          </svg>
+          Login with Facebook
+        </button>&nbsp;
+
+        <button id="ghLogin" class="btn btn-sm btn-primary btn-lg btn-login">
+          <svg class="icon icon-github">
+            <use xlink:href="#icon-github"></use>
+          </svg>
+          Login with GitHub
+        </button>
+      </div>
+      <div id="login-result" class="col-xs-12">
+      </div>
+    </div>
+    <div class="row panel-footer">
+      <div class="col-xs-12 text-right">
+        <small class="text-muted">Catalog App Login Page</small>
+      </div>
+    </div>
+  </div>
+
+  <p>{#{dict(login_session)|tojson}#}</p>
+
+  <script>
+    //======FB Script
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId      : '1732132623761642',
+        cookie     : true,  // enable cookies to allow the server to access
+                            // the session
+        xfbml      : true,  // parse social plugins on this page
+        version    : 'v2.10' // use version 2.8
+      });
+    };
+    // Load the SDK asynchronously
+    (function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = "//connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+    function fb_login(){
+        FB.login(function(response) {
+          if (response.authResponse) {
+              sendTokenToServer( FB.getAuthResponse()['accessToken'] ,"Facebook");
+            } else {
+                console.log('User cancelled login or did not fully authorize.');
+            }
+        }, {
+            scope: 'public_profile,email'
+        });
+    }
+
+    //======Google Script
+    function signInCallback(authResult) {
+      if (authResult['code']) {
+        sendTokenToServer(authResult['code'], "Google");
+      } else if (authResult['error']) {
+        console.log('There was an error: ' + authResult['error']);
+      }
+    }
+
+    //======Github Script
+    function githubCallback(code){
+        console.log("Github","{{STATE}}",code);
+        sendTokenToServer(code, "Github");
+    }
+
+    $('#ghLogin').click(function () {
+      w = 750;
+      h = 700;
+      l = (window.screen.width / 2) - ((w / 2));
+      t = (window.screen.height / 2) - ((h / 2) + 50);
+
+      console.log(window.innerWidth,window.innerHeight,window.screenX,window.screenY,l,t )
+      var strWindowFeatures = "menubar=no,location=no,resizable=no,scrollbars=no,status=yes,width="+w+",height="+h+",left="+l+",top="+t;
+
+    	window.open('https://github.com' +
+    		'/login/oauth/authorize' +
+    		'?client_id=e6789cd05a49a53a00b6' +
+    		'&scope=user',"GithubLogin", strWindowFeatures);
+    });
+
+    //======Send token to Server
+    function sendTokenToServer(token, account) {
+      console.log(token,account);
+      $.ajax({
+        type: 'POST',
+        url: '/acctconnect?state={{STATE}}',
+        processData: false,
+        data: JSON.stringify({token: token, account: account}),
+        contentType: 'application/octet-stream; charset=utf-8',
+        success: function(result) {
+          console.log(result);
+          window.location.href = "/";
+        },error: function(result){
+          console.log("ERROR", result.responseText);
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+{% extends "layout.html.j2" %}
+{% block title %}
+  {% if cat_name == '' %}
+    Home
+  {% else %}
+    {{cat_name}}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="panel-body display-items">
+    <div class="cat-cols col-xs-3">
+      <h3 class="text-info">Categories</h3>
+      {% for cat in cats %}
+      <a class="cat-text {{'curr-cat' if cat.name == cat_name }}" href="{{url_for('displaySingleCatItems', cat_id = cat.id)}}">{{cat.name}}</a><br />
+      {% endfor %}
+    </div>
+    <div class="content-cols col-xs-9">
+      <h3 class="text-info">{{title_text}}</h3>
+
+      {% for item in items %}
+        <div class="item-display text-center col-xs-3">
+          <a href="{{url_for('displayItemDetails', item_id = item.id )}}">
+            <img class="img-thumbnail" src="/images/{{item.image}}" /><br />
+            {{item.name}}
+          </a><br />
+          <span class="text-muted {{'hidden' if cat_name!= ''}}">
+            ({{item.category.name}})
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if 'username' in login_session %}
+  <div class="panel-footer text-right">
+    <a href="{{url_for('addItem' )}}" class="btn btn-success btn-sm" type="submit">
+      <span class="glyphicon glyphicon-plus"></span> Add Item
+    </a>
+  </div>
+  {% endif %}
+{% endblock %}
