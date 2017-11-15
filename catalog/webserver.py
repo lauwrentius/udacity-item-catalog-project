@@ -21,23 +21,37 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
-# APPLICATION_NAME = "Restaurant Menu Application"
-
 engine = create_engine('sqlite:///categoryitem.db')
 Base.metadata.bind = engine
 
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
+
 def randomToken():
-    return ''.join(random.choice(string.ascii_uppercase + string.digits) \
-        for x in xrange(32))
+    """
+    Generates Random token for authentication
+    returns string: randomized string of characters
+    """
+    return ''.join(random.choice(string.ascii_uppercase + string.digits)
+                   for x in xrange(32))
+
 
 def allowedFile(filename):
+    """
+    Helper function to check if a file extensions is alowed/not
+    returns boolean
+    """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 def preventOverwrite(filename):
+    """
+    Helper function prevent files being overwitten.
+    Adds '_i' to the end of the filename if file exsists on the folder.
+    returns string: new filename
+    """
     i = 1
     f = filename.rsplit('.', 1)
     while os.path.isfile(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
@@ -45,19 +59,26 @@ def preventOverwrite(filename):
         i += 1
     return filename
 
+
 def googleConnect(token):
+    """
+    Connect to Google account using a token and
+    retreives user's basic information (usrname, email, and photo)
+    params: token(string):  authentication token received from the client
+    returns dict: response-The response message, status-Http status result
+    """
     CLIENT_ID = json.loads(
         open('./client_secrets/google.json', 'r').read())['web']['client_id']
 
     try:
         # Upgrade the authorization token into a credentials object
-        oauth_flow = flow_from_clientsecrets('./client_secrets/google.json', \
-            scope='')
+        oauth_flow = flow_from_clientsecrets('./client_secrets/google.json',
+                                             scope='')
         oauth_flow.redirect_uri = 'postmessage'
         credentials = oauth_flow.step2_exchange(token)
     except FlowExchangeError:
-        return {"response": 'Failed to upgrade the authorization code.', \
-            "status": 401}
+        return {"response": 'Failed to upgrade the authorization code.',
+                "status": 401}
 
     # Check that the access token is valid.
     access_token = credentials.access_token
@@ -74,13 +95,13 @@ def googleConnect(token):
     # Verify that the access token is used for the intended user.
     gplus_id = credentials.id_token['sub']
     if result['user_id'] != gplus_id:
-        return {"response": "Token's user ID doesn't match given user ID.", \
-            "status": 500}
+        return {"response": "Token's user ID doesn't match given user ID.",
+                "status": 500}
 
     # Verify that the access token is valid for this app.
     if result['issued_to'] != CLIENT_ID:
-        return {"response": "Token's client ID does not match app's.", \
-            "status": 401}
+        return {"response": "Token's client ID does not match app's.",
+                "status": 401}
 
     # Store the access token in the session for later use.
     login_session['access_token'] = credentials.access_token
@@ -100,7 +121,12 @@ def googleConnect(token):
 
     return {"response": "Login Successful.", "status": 200}
 
+
 def googleDisconnect():
+    """
+    Disconnect from Google account
+    return dict: {response, status}
+    """
     if login_session['access_token'] is None:
         return {"response": "Current user not connected", "status": 401}
     url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
@@ -109,25 +135,33 @@ def googleDisconnect():
     resp, content = h.request(url, 'GET')
 
     if resp['status'] != '200':
-        return {"response": "Failed to revoke token for given user.", \
-            "status": 400}
+        return {"response": "Failed to revoke token for given user.",
+                "status": 400}
 
     return {"response": "Successfully disconnected.", "status": 200}
 
+
 def facebookConnect(token):
+    """
+    Function to connect to Facebook account using a token and
+    retreives user's basic information (usrname, email, and photo)
+    params: token(string):  authentication token received from the client
+    returns dict: response-The response message, status-Http status result
+    """
     h = httplib2.Http()
     app_id = json.loads(open('client_secrets/facebook.json', 'r').read())[
         'web']['app_id']
     app_secret = json.loads(
         open('client_secrets/facebook.json', 'r').read())['web']['app_secret']
 
-    url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (app_id, app_secret, token)
+    url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (
+        app_id, app_secret, token)
 
     resp, content = h.request(url, 'GET')
 
     if("error" in content):
-        return {"response": json.loads(content)['error']['message'], \
-            "status": 401}
+        return {"response": json.loads(content)['error']['message'],
+                "status": 401}
 
     access_token = json.loads(content)['access_token']
     login_session['account'] = access_token
@@ -138,8 +172,8 @@ def facebookConnect(token):
     resp, content = h.request(url, 'GET')
 
     if("error" in content):
-        return {"response": json.loads(content)['error']['message'], \
-            "status": 401}
+        return {"response": json.loads(content)['error']['message'],
+                "status": 401}
 
     data = json.loads(content)
 
@@ -163,29 +197,42 @@ def facebookConnect(token):
 
     return {"response": "Login Successful.", "status": 200}
 
+
 def facebookDisconnect():
+    """
+    Disconnect from Facebook account
+    return dict: {response, status}
+    """
     url = 'https://graph.facebook.com/%s/permissions?access_token=%s' % (
         login_session['user_id'], login_session['access_token'])
     h = httplib2.Http()
     resp, content = h.request(url, 'DELETE')[1]
 
     if resp['status'] != '200':
-        return {"response": "Failed to revoke token for given user.", \
-            "status": 400}
+        return {"response": "Failed to revoke token for given user.",
+                "status": 400}
 
     return {"response": "Successfully disconnected.", "status": 200}
 
+
 def githubConnect(token):
+    """
+    Connect to GitHub account using a token and
+    retreives user's basic information (usrname, email, and photo)
+    params: token(string):  authentication token received from the client
+    returns dict: response-The response message, status-Http status result
+    """
     h = httplib2.Http()
-    client_id = json.loads(open('client_secrets/github.json', 'r') \
-        .read())['client_id']
-    client_secret = json.loads(open('client_secrets/github.json', 'r').read())['client_secret']
+    client_id = json.loads(open('client_secrets/github.json', 'r')
+                           .read())['client_id']
+    client_secret = json.loads(
+        open('client_secrets/github.json', 'r').read())['client_secret']
 
     url = 'https://github.com/login/oauth/access_token'
     headers = {'Accept': 'application/json'}
-    body = urllib.urlencode( \
+    body = urllib.urlencode(
         {'client_id': client_id, 'client_secret': client_secret,
-        'code': token, 'state': login_session['state']})
+         'code': token, 'state': login_session['state']})
 
     resp, content = h.request(url, 'POST', body=body, headers=headers)
 
@@ -193,7 +240,8 @@ def githubConnect(token):
         return {"response": "Incorrect web token.", "status": 401}
 
     login_session['access_token'] = json.loads(content)['access_token']
-    url = ('https://api.github.com/user?access_token=%s' % login_session['access_token'])
+    url = ('https://api.github.com/user?access_token=%s' %
+           login_session['access_token'])
     resp, content = h.request(url, 'GET')
 
     if(resp['status'] == 401):
@@ -208,42 +256,66 @@ def githubConnect(token):
 
     return {"response": "Login Successful.", "status": 200}
 
+
 def serializeItem(item):
+    """
+    Serialize Item object and add change the image url
+    to serve for client's endpoint
+    params: item(object): Item Object
+    returns dict: serialized item
+    """
     ret = item.serialize
-    ret['image'] = url_for('uploaded_file', filename=ret['image'], \
-        _external=True)
+    ret['image'] = url_for('uploaded_file', filename=ret['image'],
+                           _external=True)
     return ret
+
 
 @app.route('/images/<filename>')
 def uploaded_file(filename):
+    """
+    Serves the image from the upload folder
+    params: filename(string): Filename
+    returns string: path to the image
+    """
     if filename:
         filename = 'placeholder.jpg'
 
     return send_from_directory(app.config['UPLOAD_FOLDER'],
                                filename)
 
+
 @app.route('/login')
 def showLogin():
+    """
+    Displays the login Page for sign-in
+    """
+
     if 'username' in login_session:
         return redirect(url_for('displayItems'))
 
     login_session['state'] = randomToken()
     client_id = {}
-    client_id['google'] = json.loads(open('client_secrets/google.json', 'r').read())['web']['client_id']
-    client_id['facebook'] = json.loads(open('client_secrets/facebook.json', 'r').read())['web']['app_id']
-    client_id['github'] = json.loads(open('client_secrets/github.json', 'r').read())['client_id']
+    client_id['google'] = json.loads(
+        open('client_secrets/google.json', 'r').read())['web']['client_id']
+    client_id['facebook'] = json.loads(
+        open('client_secrets/facebook.json', 'r').read())['web']['app_id']
+    client_id['github'] = json.loads(
+        open('client_secrets/github.json', 'r').read())['client_id']
 
     return render_template('login.html.j2', STATE=login_session['state'], login_session=login_session, client_id)
 
+
 @app.route('/acctconnect', methods=['POST'])
 def acctConnect():
+    """
+    Ajax call by the user to exchange token with the user info.
+    """
     if request.args.get('state') != login_session['state']:
         response = make_response(json.dumps('Invalid state parameter.'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
 
     data = json.loads(request.data)
-    # resp = make_response(json.dumps('Invalid login info.'), 401)
 
     if(data['account'] == "Google"):
         ret = googleConnect(data['token'])
@@ -260,9 +332,12 @@ def acctConnect():
     response.headers['Content-Type'] = 'application/json'
     return response
 
+
 @app.route('/acctdisconnect')
 def acctDisconnect():
-
+    """
+    Disconnects user and deletes the info from the session.
+    """
     if(login_session['account'] == "Google"):
         ret = googleDisconnect()
 
@@ -283,8 +358,12 @@ def acctDisconnect():
 
     return redirect(url_for('displayItems'))
 
+
 @app.route('/ghcallback')
 def ghCallback():
+    """
+    Callback window for Github account
+    """
     ret = '<script>'\
         'var code = window.location.toString().replace(/.+code=/, \'\');' \
         'window.opener.githubCallback(code);' \
@@ -293,9 +372,14 @@ def ghCallback():
 
     return ret
 
+
 @app.route('/')
 @app.route('/<endpoint>')
 def displayItems(endpoint=None):
+    """
+    Displays all items from all categories.
+    It also provides a JSON endpoint option.
+    """
     cats = session.query(Category).all()
     items = session.query(CategoryItem).order_by(CategoryItem.id).all()
     title_text = "Latest Items"
@@ -314,9 +398,14 @@ def displayItems(endpoint=None):
         'display_items.html.j2', cats=cats, items=items,
         title_text=title_text, cat_name="", login_session=login_session)
 
+
 @app.route('/catalog/<int:cat_id>/')
 @app.route('/catalog/<int:cat_id>/<endpoint>')
 def displaySingleCatItems(cat_id, endpoint=None):
+    """
+    Displays all items from specific category.
+    It also provides a JSON endpoint option.
+    """
     cats = session.query(Category).all()
     curr_cat = session.query(Category).filter(Category.id == cat_id).one()
     items = session.query(CategoryItem) \
@@ -334,9 +423,14 @@ def displaySingleCatItems(cat_id, endpoint=None):
         'display_items.html.j2', cats=cats, items=items,
         title_text=title_text, cat_name=curr_cat.name, login_session=login_session)
 
+
 @app.route('/item/<int:item_id>/')
 @app.route('/item/<int:item_id>/<endpoint>')
 def displayItemDetails(item_id, endpoint=None):
+    """
+    Displays single item detail.
+    It also provides a JSON endpoint option.
+    """
     item = session.query(CategoryItem).join(CategoryItem.category) \
         .filter(CategoryItem.id == item_id).one()
 
@@ -346,9 +440,13 @@ def displayItemDetails(item_id, endpoint=None):
     login_session['_csrf_token'] = randomToken()
     return render_template('item_details.html.j2', item=item, login_session=login_session)
 
+
 @app.route('/item/<int:item_id>/edit',
            methods=['GET', 'POST'])
 def editItem(item_id):
+    """
+    Page for editing item
+    """
     if 'username' not in login_session:
         return redirect(url_for('displayItemDetails', item_id=item_id))
 
@@ -374,7 +472,8 @@ def editItem(item_id):
             if file and (file.filename != '') and allowedFile(file.filename):
                 # delete exsisting file
                 if item.image is not None:
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.image))
+                    os.remove(os.path.join(
+                        app.config['UPLOAD_FOLDER'], item.image))
 
                 imagefile = secure_filename(file.filename)
                 imagefile = preventOverwrite(imagefile)
@@ -392,8 +491,12 @@ def editItem(item_id):
 
         return render_template('item_edit.html.j2', cats=cats, item=item, login_session=login_session)
 
+
 @app.route('/item/add', methods=['GET', 'POST'])
 def addItem():
+    """
+    Page to add an item
+    """
     if 'username' not in login_session:
         return redirect(url_for('displayItems'))
 
@@ -420,9 +523,13 @@ def addItem():
         login_session['_csrf_token'] = randomToken()
         return render_template('item_edit.html.j2', cats=cats, item=None, login_session=login_session)
 
+
 @app.route('/item/<int:item_id>/delete',
            methods=['POST'])
 def deleteItem(item_id):
+    """
+    Deletes an item
+    """
     if 'username' not in login_session:
         response = make_response(json.dumps("Not Logged In."), 400)
         response.headers['Content-Type'] = 'application/json'
@@ -440,6 +547,7 @@ def deleteItem(item_id):
     session.commit()
 
     return redirect(url_for('displayItems'))
+
 
 if __name__ == '__main__':
     app.secret_key = '1GrSamWXZ8ikGhg43UIUbw5X'
