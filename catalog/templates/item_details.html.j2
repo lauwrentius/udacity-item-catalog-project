@@ -18,8 +18,9 @@
     <p class="img-thumbnail"><img src="/images/{{item.image}}" /></p>
 
     <p>{{item.description}}</p>
+    <p class="text-muted">by {{item.user.username}}</p>
   </div>
-  {% if 'username' in login_session %}
+  {% if 'username' in login_session and login_session['registered_user'] == item.user_id %}
     <div class="panel-footer text-right">
       <a class="btn btn-success btn-sm"
         href="{{url_for('editItem', item_id = item.id )}}">
