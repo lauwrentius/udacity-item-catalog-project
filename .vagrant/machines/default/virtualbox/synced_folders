@@ -1,1 +1,1 @@
-{"virtualbox":{"/vagrant":{"guestpath":"/vagrant","hostpath":"/Volumes/InternalHD/LOCALDEV/fullstack/vagrant","disabled":false,"__vagrantfile":true}}}
+{"virtualbox":{"/vagrant":{"guestpath":"/vagrant","hostpath":"/Volumes/InternalHD/LOCALDEV/udacity-item-catalog","disabled":false,"__vagrantfile":true}}}

@@ -119,7 +119,6 @@
 
     //======Github Script
     function githubCallback(code){
-        console.log("Github","{{STATE}}",code);
         sendTokenToServer(code, "Github");
     }
 
@@ -143,13 +142,13 @@
       console.log(token,account);
       $.ajax({
         type: 'POST',
-        url: '/acctconnect?state={{STATE}}',
+        url: '/acctconnect?state={{login_session["state"]}}',
         processData: false,
         data: JSON.stringify({token: token, account: account}),
         contentType: 'application/octet-stream; charset=utf-8',
         success: function(result) {
           console.log(result);
-          window.location.href = "/";
+          window.location.href = "{{url_for('displayItems')}}";
         },error: function(result){
           console.log("ERROR", result.responseText);
         }

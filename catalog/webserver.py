@@ -1,8 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, \
-    jsonify, make_response, send_from_directory, session as login_session
+from flask import (Flask,
+                   render_template,
+                   request,
+                   redirect,
+                   url_for,
+                   flash,
+                   jsonify,
+                   make_response,
+                   send_from_directory,
+                   session as login_session)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database_setup import Base, Category, CategoryItem
+from database_setup import Base, Category, CategoryItem, User
 from werkzeug.utils import secure_filename
 from oauth2client.client import flow_from_clientsecrets, FlowExchangeError
 import os
@@ -15,7 +23,7 @@ import requests
 import pprint
 
 UPLOAD_FOLDER = '/vagrant/catalog/uploads'
-ALLOWED_EXTENSIONS = set(['jpg', 'jpe', 'jpeg', 'png', 'gif', 'svg', 'bmp'])
+ALLOWED_EXTENSIONS = {'jpg', 'jpe', 'jpeg', 'png', 'gif', 'svg', 'bmp'}
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -28,6 +36,15 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
+def loadClientSecret(account):
+    """
+    Loads Json File of client's Secret
+    returns json: app client secret for authentication
+    """
+    file = ('client_secrets/%s.json' % account)
+    return json.loads(open(file, 'r').read())
+
+
 def randomToken():
     """
     Generates Random token for authentication
@@ -35,6 +52,21 @@ def randomToken():
     """
     return ''.join(random.choice(string.ascii_uppercase + string.digits)
                    for x in xrange(32))
+
+
+def registerUser():
+    user = session.query(User) \
+        .filter(User.email == login_session['email'])
+
+    if user.count() == 0:
+        newUser = User(
+            email=login_session['email'],
+            username=login_session['username'])
+        session.add(newUser)
+        session.commit()
+        login_session['registered_user'] = newUser.id
+    else:
+        login_session['registered_user'] = user[0].id
 
 
 def allowedFile(filename):
@@ -87,8 +119,6 @@ def googleConnect(token):
     h = httplib2.Http()
     result = json.loads(h.request(url, 'GET')[1])
     # If there was an error in the access token info, abort.
-    print result
-
     if result.get('error') is not None:
         return {"response": result.get('error'), "status": 500}
 
@@ -103,22 +133,24 @@ def googleConnect(token):
         return {"response": "Token's client ID does not match app's.",
                 "status": 401}
 
-    # Store the access token in the session for later use.
-    login_session['access_token'] = credentials.access_token
-    login_session['user_id'] = gplus_id
-
     # Get user info
     userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
     params = {'access_token': credentials.access_token, 'alt': 'json'}
     answer = requests.get(userinfo_url, params=params)
-
     data = answer.json()
 
-    login_session['username'] = data['name']
-    login_session['picture'] = data['picture']
-    login_session['email'] = data['email']
-    login_session['account'] = "Google"
+    if data['name'] == '':
+        data['name'] = data['email']
 
+    login_session.update({
+        'account': 'Google',
+        'user_id': gplus_id,
+        'username': data['name'],
+        'email': data['email'],
+        'picture': data['picture'],
+        'access_token': credentials.access_token})
+
+    registerUser()
     return {"response": "Login Successful.", "status": 200}
 
 
@@ -164,7 +196,6 @@ def facebookConnect(token):
                 "status": 401}
 
     access_token = json.loads(content)['access_token']
-    login_session['account'] = access_token
 
     # Use token to get user info from API
     url = 'https://graph.facebook.com/v2.8/me?access_token=%s&fields=name,id,email' % access_token
@@ -177,24 +208,24 @@ def facebookConnect(token):
 
     data = json.loads(content)
 
-    login_session['account'] = "Facebook"
-    login_session['user_id'] = data["id"]
-    login_session['username'] = data["name"]
-    login_session['email'] = data["email"]
-    login_session['access_token'] = token
-
     # Get user picture
     url = 'https://graph.facebook.com/v2.8/me/picture?access_token=%s&redirect=0&height=200&width=200' % access_token
-
     h = httplib2.Http()
     resp, content = h.request(url, 'GET')
 
     if("error" in content):
         return {"response": json.loads(content)['error']['message'], "status": 401}
+    picture_data = json.loads(content)
 
-    data = json.loads(content)
-    login_session['picture'] = data["data"]["url"]
+    login_session.update({
+        'account': "Facebook",
+        'user_id': data["id"],
+        'username': data["name"],
+        'email': data["email"],
+        'picture': picture_data["data"]["url"],
+        'access_token': access_token})
 
+    registerUser()
     return {"response": "Login Successful.", "status": 200}
 
 
@@ -238,22 +269,24 @@ def githubConnect(token):
 
     if("error" in content):
         return {"response": "Incorrect web token.", "status": 401}
+    access_token = json.loads(content)['access_token']
 
-    login_session['access_token'] = json.loads(content)['access_token']
-    url = ('https://api.github.com/user?access_token=%s' %
-           login_session['access_token'])
+    url = ('https://api.github.com/user?access_token=%s' % access_token)
     resp, content = h.request(url, 'GET')
 
     if(resp['status'] == 401):
         return {"response": "Bad credentials.", "status": 401}
 
     user_data = json.loads(content)
-    login_session['account'] = 'Github'
-    login_session['user_id'] = user_data['id']
-    login_session['username'] = user_data['login']
-    login_session['picture'] = user_data['avatar_url']
-    login_session['email'] = user_data['email']
+    login_session.update({
+        'account': 'Github',
+        'username': user_data['login'],
+        'user_id': user_data['id'],
+        'email': user_data['email'],
+        'picture': user_data['avatar_url'],
+        'access_token': access_token})
 
+    registerUser()
     return {"response": "Login Successful.", "status": 200}
 
 
@@ -277,7 +310,7 @@ def uploaded_file(filename):
     params: filename(string): Filename
     returns string: path to the image
     """
-    if filename:
+    if filename == 'None':
         filename = 'placeholder.jpg'
 
     return send_from_directory(app.config['UPLOAD_FOLDER'],
@@ -294,15 +327,13 @@ def showLogin():
         return redirect(url_for('displayItems'))
 
     login_session['state'] = randomToken()
-    client_id = {}
-    client_id['google'] = json.loads(
-        open('client_secrets/google.json', 'r').read())['web']['client_id']
-    client_id['facebook'] = json.loads(
-        open('client_secrets/facebook.json', 'r').read())['web']['app_id']
-    client_id['github'] = json.loads(
-        open('client_secrets/github.json', 'r').read())['client_id']
+    client_id = {
+        'google': loadClientSecret('google')['web']['client_id'],
+        'facebook': loadClientSecret('facebook')['web']['app_id'],
+        'github': loadClientSecret('github')['client_id']}
 
-    return render_template('login.html.j2', STATE=login_session['state'], login_session=login_session, client_id)
+    return render_template('login.html.j2', login_session=login_session,
+                           client_id=client_id)
 
 
 @app.route('/acctconnect', methods=['POST'])
@@ -325,8 +356,6 @@ def acctConnect():
 
     if(data['account'] == "Github"):
         ret = githubConnect(data['token'])
-
-    print data['account']
 
     response = make_response(json.dumps(ret['response']), ret['status'])
     response.headers['Content-Type'] = 'application/json'
@@ -431,8 +460,10 @@ def displayItemDetails(item_id, endpoint=None):
     Displays single item detail.
     It also provides a JSON endpoint option.
     """
-    item = session.query(CategoryItem).join(CategoryItem.category) \
+    item = session.query(CategoryItem) \
         .filter(CategoryItem.id == item_id).one()
+
+    print(item.user.serialize)
 
     if endpoint == 'json':
         return jsonify(item=serializeItem(item))
@@ -441,7 +472,7 @@ def displayItemDetails(item_id, endpoint=None):
     return render_template('item_details.html.j2', item=item, login_session=login_session)
 
 
-@app.route('/item/<int:item_id>/edit',
+@app.route('/item/edit/<int:item_id>/',
            methods=['GET', 'POST'])
 def editItem(item_id):
     """
@@ -453,6 +484,9 @@ def editItem(item_id):
     cats = session.query(Category).all()
     item = session.query(CategoryItem).join(CategoryItem.category) \
         .filter(CategoryItem.id == item_id).one()
+
+    if login_session['registered_user'] != item.user_id:
+        return redirect(url_for('displayItemDetails', item_id=item_id))
 
     if request.method == 'POST':
         if request.form['_csrf_token'] != "login_session['_csrf_token']":
@@ -489,7 +523,8 @@ def editItem(item_id):
     else:
         login_session['_csrf_token'] = randomToken()
 
-        return render_template('item_edit.html.j2', cats=cats, item=item, login_session=login_session)
+        return render_template('item_edit.html.j2', cats=cats, item=item,
+                               login_session=login_session)
 
 
 @app.route('/item/add', methods=['GET', 'POST'])
@@ -501,7 +536,6 @@ def addItem():
         return redirect(url_for('displayItems'))
 
     cats = session.query(Category).all()
-    new_item = CategoryItem(name="", description="", category_id=-1)
 
     if request.method == 'POST':
         print request.form['_csrf_token']
@@ -510,10 +544,11 @@ def addItem():
             response = make_response(json.dumps("Invalid web token."), 400)
             response.headers['Content-Type'] = 'application/json'
             return response
-
-        new_item.name = request.form['name']
-        new_item.description = request.form['description']
-        new_item.category_id = request.form['category']
+        new_item = CategoryItem(
+            name=request.form['name'],
+            description=request.form['description'],
+            category_id=request.form['category'],
+            user_id=login_session['registered_user'])
 
         session.add(new_item)
         session.commit()
@@ -521,10 +556,11 @@ def addItem():
         return redirect(url_for('displayItemDetails', item_id=new_item.id))
     else:
         login_session['_csrf_token'] = randomToken()
-        return render_template('item_edit.html.j2', cats=cats, item=None, login_session=login_session)
+        return render_template('item_edit.html.j2', cats=cats, item=None,
+                               login_session=login_session)
 
 
-@app.route('/item/<int:item_id>/delete',
+@app.route('/item/delete/<int:item_id>/',
            methods=['POST'])
 def deleteItem(item_id):
     """
@@ -542,6 +578,13 @@ def deleteItem(item_id):
 
     item = session.query(CategoryItem).join(CategoryItem.category) \
         .filter(CategoryItem.id == item_id).one()
+
+    print 'asdasdasd'
+    print item
+    if login_session['registered_user'] != item.user_id:
+        response = make_response(json.dumps("Unauthorized to delete."), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
 
     session.delete(item)
     session.commit()
