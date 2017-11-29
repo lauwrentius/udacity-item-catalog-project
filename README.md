@@ -7,7 +7,7 @@ This is a project assigned by Udacity in part of the [Udacity Full Stack Nanodeg
 ## About
 This application displays list of items within a variety of categories. It allows the user to sign in using various authentication system. Signed in users will have the ability to post, edit and delete items listed.
 
-The application runs on a VM using *Vagrant*. It's build with *Python* and uses *Flask* framework and sqlite* for storing data. It uses *OAuth2* framework as a form of user authentication. Users are able to select between *Google*, *Facebook*, or *Github* as third-party authentication platforms.
+The application runs on a VM using *Vagrant*. It's build with *Python* and uses *Flask* framework and *sqlite* for storing data. It uses *OAuth2* framework as a form of user authentication. Users are able to select between *Google*, *Facebook*, or *Github* as third-party authentication platforms.
 
 ## Installation
 
