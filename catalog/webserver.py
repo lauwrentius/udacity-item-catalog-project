@@ -22,11 +22,10 @@ import json
 import requests
 import pprint
 
-UPLOAD_FOLDER = '/vagrant/catalog/uploads'
 ALLOWED_EXTENSIONS = {'jpg', 'jpe', 'jpeg', 'png', 'gif', 'svg', 'bmp'}
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['UPLOAD_FOLDER'] = app.root_path + '/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 engine = create_engine('sqlite:///categoryitem.db')
@@ -41,7 +40,7 @@ def loadClientSecret(account):
     Loads Json File of client's Secret
     returns json: app client secret for authentication
     """
-    file = ('client_secrets/%s.json' % account)
+    file = (app.root_path + '/client_secrets/%s.json' % account)
     return json.loads(open(file, 'r').read())
 
 
@@ -100,11 +99,11 @@ def googleConnect(token):
     returns dict: response-The response message, status-Http status result
     """
     CLIENT_ID = json.loads(
-        open('./client_secrets/google.json', 'r').read())['web']['client_id']
+        open(app.root_path + '/client_secrets/google.json', 'r').read())['web']['client_id']
 
     try:
         # Upgrade the authorization token into a credentials object
-        oauth_flow = flow_from_clientsecrets('./client_secrets/google.json',
+        oauth_flow = flow_from_clientsecrets(app.root_path + '/client_secrets/google.json',
                                              scope='')
         oauth_flow.redirect_uri = 'postmessage'
         credentials = oauth_flow.step2_exchange(token)
@@ -181,10 +180,10 @@ def facebookConnect(token):
     returns dict: response-The response message, status-Http status result
     """
     h = httplib2.Http()
-    app_id = json.loads(open('client_secrets/facebook.json', 'r').read())[
+    app_id = json.loads(open(app.root_path + '/client_secrets/facebook.json', 'r').read())[
         'web']['app_id']
     app_secret = json.loads(
-        open('client_secrets/facebook.json', 'r').read())['web']['app_secret']
+        open(app.root_path + '/client_secrets/facebook.json', 'r').read())['web']['app_secret']
 
     url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (
         app_id, app_secret, token)
@@ -254,10 +253,10 @@ def githubConnect(token):
     returns dict: response-The response message, status-Http status result
     """
     h = httplib2.Http()
-    client_id = json.loads(open('client_secrets/github.json', 'r')
+    client_id = json.loads(open(app.root_path + '/client_secrets/github.json', 'r')
                            .read())['client_id']
     client_secret = json.loads(
-        open('client_secrets/github.json', 'r').read())['client_secret']
+        open(app.root_path + '/client_secrets/github.json', 'r').read())['client_secret']
 
     url = 'https://github.com/login/oauth/access_token'
     headers = {'Accept': 'application/json'}
