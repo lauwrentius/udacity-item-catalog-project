@@ -537,8 +537,16 @@ def addItem():
     cats = session.query(Category).all()
 
     if request.method == 'POST':
-        print request.form['_csrf_token']
-        print
+
+        imagefile = None
+        if 'image' in request.files:
+            file = request.files['image']
+
+            if file and (file.filename != '') and allowedFile(file.filename):
+                imagefile = secure_filename(file.filename)
+                imagefile = preventOverwrite(imagefile)
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagefile))
+
         if request.form['_csrf_token'] != login_session['_csrf_token']:
             response = make_response(json.dumps("Invalid web token."), 400)
             response.headers['Content-Type'] = 'application/json'
@@ -547,6 +555,7 @@ def addItem():
             name=request.form['name'],
             description=request.form['description'],
             category_id=request.form['category'],
+            image=imagefile,
             user_id=login_session['registered_user'])
 
         session.add(new_item)
