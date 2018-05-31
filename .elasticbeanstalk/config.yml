@@ -4,10 +4,12 @@ branch-defaults:
     group_suffix: null
   aws-eb:
     environment: ItemCatalog-env
+  master:
+    environment: ItemCatalog-env
 environment-defaults:
   ItemCatalog-env:
-    branch: null
-    repository: null
+    branch: master
+    repository: origin
 global:
   application_name: item-catalog
   branch: null

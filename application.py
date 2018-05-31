@@ -9,7 +9,7 @@ from flask import (Flask,
                    send_from_directory,
                    send_file,
                    session as login_session)
-# import pymysql.cursors
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db_setup import Base, Category, CategoryItem, User
