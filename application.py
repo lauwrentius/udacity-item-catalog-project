@@ -10,6 +10,7 @@ from flask import (Flask,
                    send_file,
                    session as login_session)
 
+import mysql.connector
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db_setup import Base, Category, CategoryItem, User
@@ -24,6 +25,7 @@ import json
 import requests
 import pprint
 import boto3
+import pymysql.cursors
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpe', 'jpeg', 'png', 'gif', 'svg', 'bmp'}
 
@@ -42,7 +44,7 @@ app.config['AWS_BUCKET'] = 'elasticbeanstalk-us-west-2-369336360970'
 app.config['AWS_PATH'] = 'item-catalog-uploads/'
 app.config['AWS_HOST'] = 'https://s3-us-west-2.amazonaws.com/elasticbeanstalk-us-west-2-369336360970/item-catalog-uploads/'
 
-engine = create_engine('mysql+pymysql://' +
+engine = create_engine('mysql+mysqlconnector://' +
     loadClientSecret('dbase')['user'] + ':' +
     loadClientSecret('dbase')['pass'] + '@' +
     loadClientSecret('dbase')['host'] + '/' +
