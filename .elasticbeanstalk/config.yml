@@ -8,8 +8,8 @@ branch-defaults:
     environment: ItemCatalog-env
 environment-defaults:
   ItemCatalog-env:
-    branch: master
-    repository: origin
+    branch: null
+    repository: null
 global:
   application_name: item-catalog
   branch: null
