@@ -6,7 +6,7 @@
     "token_uri":"https://accounts.google.com/o/oauth2/token",
     "auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs",
     "client_secret":"1GrSamWXZ8ikGhg43UIUbw5X",
-    "redirect_uris":["http://localhost:5000"],
-    "javascript_origins":["http://localhost:5000"]
+    "redirect_uris":["http://itemcatalog-env.sbb9akyeak.us-west-2.elasticbeanstalk.com/login"],
+    "javascript_origins":["http://itemcatalog-env.sbb9akyeak.us-west-2.elasticbeanstalk.com/login"]
   }
 }
