@@ -15,7 +15,7 @@
         (<a href="{{url_for('displaySingleCatItems', cat_id = item.category_id)}}">{{item.category.name}}</a>)
       </span>
     </h3>
-    <p class="img-thumbnail"><img src="/images/{{item.image}}" /></p>
+    <p class="img-thumbnail"><img src="{{aws_host+item.image}}" /></p>
 
     <p>{{item.description}}</p>
     <p class="text-muted">by {{item.user.username}}</p>

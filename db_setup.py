@@ -2,6 +2,8 @@ import sys
 
 from sqlalchemy import Column, ForeignKey, Integer, String
 
+import pymysql.cursors
+
 from sqlalchemy.ext.declarative import declarative_base
 
 from sqlalchemy.orm import relationship
@@ -67,5 +69,5 @@ class CategoryItem(Base):
         }
 
 
-engine = create_engine('sqlite:///categoryitem.db')
+engine = create_engine('mysql+pymysql://lauwrentius:LAuwrent1us@aa1kczw6kaut3s5.celmatwbtx0m.us-west-2.rds.amazonaws.com/test')
 Base.metadata.create_all(engine)

@@ -7,10 +7,12 @@ from flask import (Flask,
                    jsonify,
                    make_response,
                    send_from_directory,
+                   send_file,
                    session as login_session)
+# import pymysql.cursors
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database_setup import Base, Category, CategoryItem, User
+from db_setup import Base, Category, CategoryItem, User
 from werkzeug.utils import secure_filename
 from oauth2client.client import flow_from_clientsecrets, FlowExchangeError
 import os
@@ -21,19 +23,9 @@ import httplib2
 import json
 import requests
 import pprint
+import boto3
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpe', 'jpeg', 'png', 'gif', 'svg', 'bmp'}
-
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = app.root_path + '/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
-
-engine = create_engine('sqlite:///categoryitem.db')
-Base.metadata.bind = engine
-
-DBSession = sessionmaker(bind=engine)
-session = DBSession()
-
 
 def loadClientSecret(account):
     """
@@ -43,6 +35,25 @@ def loadClientSecret(account):
     file = (app.root_path + '/client_secrets/%s.json' % account)
     return json.loads(open(file, 'r').read())
 
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = app.root_path + '/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+app.config['AWS_BUCKET'] = 'elasticbeanstalk-us-west-2-369336360970'
+app.config['AWS_PATH'] = 'item-catalog-uploads/'
+app.config['AWS_HOST'] = 'https://s3-us-west-2.amazonaws.com/elasticbeanstalk-us-west-2-369336360970/item-catalog-uploads/'
+
+engine = create_engine('mysql+pymysql://' +
+    loadClientSecret('dbase')['user'] + ':' +
+    loadClientSecret('dbase')['pass'] + '@' +
+    loadClientSecret('dbase')['host'] + '/' +
+    loadClientSecret('dbase')['dbase'])
+
+Base.metadata.bind = engine
+
+DBSession = sessionmaker(bind=engine)
+session = DBSession()
+
+s3 = boto3.resource('s3')
 
 def randomToken():
     """
@@ -50,7 +61,7 @@ def randomToken():
     returns string: randomized string of characters
     """
     return ''.join(random.choice(string.ascii_uppercase + string.digits)
-                   for x in xrange(32))
+                   for x in range(32))
 
 
 def registerUser():
@@ -75,7 +86,6 @@ def allowedFile(filename):
     """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 def preventOverwrite(filename):
     """
@@ -301,6 +311,8 @@ def serializeItem(item):
                            _external=True)
     return ret
 
+def getURLImage(filename):
+    return app.config['AWS_HOST'] + filename
 
 @app.route('/images/<filename>')
 def uploaded_file(filename):
@@ -312,8 +324,20 @@ def uploaded_file(filename):
     if filename == 'None':
         filename = 'placeholder.jpg'
 
+    # generate_img(path)
+    # fullpath = 'https://s3-us-west-2.amazonaws.com/elasticbeanstalk-us-west-2-369336360970/item-catalog-uploads/'+filename
+    # resp = flask.make_response(open(fullpath).read())
+    # resp.content_type = "image/jpeg"
+    # print('sad')
+    # send_file(fullpath)
+    # return s3.meta.client.download_file(
+    #     app.config['AWS_BUCKET'],
+    #     filename,
+    #     os.path.join(app.config['AWS_PATH'], filename))
+
+    # return resp
     return send_from_directory(app.config['UPLOAD_FOLDER'],
-                               filename)
+        filename)
 
 
 @app.route('/login')
@@ -376,7 +400,7 @@ def acctDisconnect():
         # Cannot revoke Github access token.
         ret = {"response": "Successfully disconnected.", "status": 200}
 
-    print ret
+    # print ret
     del login_session['account']
     del login_session['access_token']
     del login_session['user_id']
@@ -424,6 +448,7 @@ def displayItems(endpoint=None):
 
     return render_template(
         'display_items.html.j2', cats=cats, items=items,
+        getURLImage=getURLImage,
         title_text=title_text, cat_name="", login_session=login_session)
 
 
@@ -545,7 +570,15 @@ def addItem():
             if file and (file.filename != '') and allowedFile(file.filename):
                 imagefile = secure_filename(file.filename)
                 imagefile = preventOverwrite(imagefile)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagefile))
+                # file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagefile))
+                # print(os.path.join(app.config['AWS_PATH'], imagefile))
+                s3.meta.client.upload_fileobj(file, app.config['AWS_BUCKET'],os.path.join(app.config['AWS_PATH'], imagefile))
+                # s3.meta.client.upload_file(
+                #     imagefile,
+                #     app.config['AWS_BUCKET'],imagefile)
+                #print(type(file.read()))
+
+                # s3.meta.client.upload_file(os.path.join(app.config['AWS_PATH'], imagefile), app.config['AWS_BUCKET'],imagefile)
 
         if request.form['_csrf_token'] != login_session['_csrf_token']:
             response = make_response(json.dumps("Invalid web token."), 400)
@@ -587,8 +620,8 @@ def deleteItem(item_id):
     item = session.query(CategoryItem).join(CategoryItem.category) \
         .filter(CategoryItem.id == item_id).one()
 
-    print 'asdasdasd'
-    print item
+    # print 'asdasdasd'
+    # print item
     if login_session['registered_user'] != item.user_id:
         response = make_response(json.dumps("Unauthorized to delete."), 200)
         response.headers['Content-Type'] = 'application/json'
@@ -598,6 +631,10 @@ def deleteItem(item_id):
     session.commit()
 
     return redirect(url_for('displayItems'))
+
+@app.context_processor
+def addAWSHost():
+    return dict(aws_host=app.config['AWS_HOST'])
 
 
 if __name__ == '__main__':
