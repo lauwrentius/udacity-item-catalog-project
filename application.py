@@ -37,6 +37,9 @@ def loadClientSecret(account):
     return json.loads(open(file, 'r').read())
 
 application = Flask(__name__)
+application.secret_key = '1GrSamWXZ8ikGhg43UIUbw5X'
+
+
 application.config['UPLOAD_FOLDER'] = application.root_path + '/uploads'
 application.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 application.config['AWS_BUCKET'] = 'elasticbeanstalk-us-west-2-369336360970'
@@ -639,7 +642,6 @@ def addAWSHost():
 
 
 if __name__ == '__main__':
-    application.secret_key = '1GrSamWXZ8ikGhg43UIUbw5X'
     application.config['SESSION_TYPE'] = 'filesystem'
     application.debug = True
     application.run(host='0.0.0.0', port=5000)
