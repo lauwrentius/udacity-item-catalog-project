@@ -33,7 +33,7 @@ def loadClientSecret(account):
     Loads Json File of client's Secret
     returns json: application client secret for authentication
     """
-    file = (application.root_path + '/client_secrets/%s.json' % account)
+    file = ('./client_secrets/%s.json' % account)
     return json.loads(open(file, 'r').read())
 
 application = Flask(__name__)
