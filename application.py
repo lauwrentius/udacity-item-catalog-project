@@ -273,25 +273,26 @@ def githubConnect(token):
         open(application.root_path + '/client_secrets/github.json', 'r').read())['client_secret']
 
     url = 'https://github.com/login/oauth/access_token'
-    headers = {'Accept': 'applicationlication/json'}
-    body = urllib.urlencode(
+    headers = {'Accept': 'application/json'}
+    body = urllib.parse.urlencode(
         {'client_id': client_id, 'client_secret': client_secret,
          'code': token, 'state': login_session['state']})
 
     resp, content = h.request(url, 'POST', body=body, headers=headers)
+    str_content = content.decode('utf-8')
 
-    print(type(content))
-    if("error" in content):
+    if("error" in str_content):
         return {"response": "Incorrect web token.", "status": 401}
-    access_token = json.loads(content)['access_token']
+    access_token = json.loads(str_content)['access_token']
 
     url = ('https://api.github.com/user?access_token=%s' % access_token)
     resp, content = h.request(url, 'GET')
+    str_content = content.decode('utf-8')
 
     if(resp['status'] == 401):
         return {"response": "Bad credentials.", "status": 401}
 
-    user_data = json.loads(content)
+    user_data = json.loads(str_content)
     login_session.update({
         'account': 'Github',
         'username': user_data['login'],
@@ -371,7 +372,7 @@ def acctConnect():
     """
     if request.args.get('state') != login_session['state']:
         response = make_response(json.dumps('Invalid state parameter.'), 401)
-        response.headers['Content-Type'] = 'applicationlication/json'
+        response.headers['Content-Type'] = 'application/json'
         return response
 
     data = json.loads(request.data)
@@ -386,7 +387,7 @@ def acctConnect():
         ret = githubConnect(data['token'])
 
     response = make_response(json.dumps(ret['response']), ret['status'])
-    response.headers['Content-Type'] = 'applicationlication/json'
+    response.headers['Content-Type'] = 'application/json'
     return response
 
 
@@ -520,7 +521,7 @@ def editItem(item_id):
     if request.method == 'POST':
         if request.form['_csrf_token'] != "login_session['_csrf_token']":
             response = make_response(json.dumps("Invalid web token."), 400)
-            response.headers['Content-Type'] = 'applicationlication/json'
+            response.headers['Content-Type'] = 'application/json'
             return response
 
         item.name = request.form['name']
@@ -587,7 +588,7 @@ def addItem():
 
         if request.form['_csrf_token'] != login_session['_csrf_token']:
             response = make_response(json.dumps("Invalid web token."), 400)
-            response.headers['Content-Type'] = 'applicationlication/json'
+            response.headers['Content-Type'] = 'application/json'
             return response
         new_item = CategoryItem(
             name=request.form['name'],
@@ -614,12 +615,12 @@ def deleteItem(item_id):
     """
     if 'username' not in login_session:
         response = make_response(json.dumps("Not Logged In."), 400)
-        response.headers['Content-Type'] = 'applicationlication/json'
+        response.headers['Content-Type'] = 'application/json'
         return response
 
     if request.form['_csrf_token'] != login_session['_csrf_token']:
         response = make_response(json.dumps("Invalid web token."), 400)
-        response.headers['Content-Type'] = 'applicationlication/json'
+        response.headers['Content-Type'] = 'application/json'
         return response
 
     item = session.query(CategoryItem).join(CategoryItem.category) \
@@ -629,7 +630,7 @@ def deleteItem(item_id):
     # print item
     if login_session['registered_user'] != item.user_id:
         response = make_response(json.dumps("Unauthorized to delete."), 200)
-        response.headers['Content-Type'] = 'applicationlication/json'
+        response.headers['Content-Type'] = 'application/json'
         return response
 
     session.delete(item)
