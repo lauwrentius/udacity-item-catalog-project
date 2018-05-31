@@ -280,6 +280,7 @@ def githubConnect(token):
 
     resp, content = h.request(url, 'POST', body=body, headers=headers)
 
+    print(type(content))
     if("error" in content):
         return {"response": "Incorrect web token.", "status": 401}
     access_token = json.loads(content)['access_token']
@@ -635,6 +636,10 @@ def deleteItem(item_id):
     session.commit()
 
     return redirect(url_for('displayItems'))
+
+@application.route('/privacy')
+def privacy():
+    return "This is just a test app. We're not selling/using any of your data."
 
 @application.context_processor
 def addAWSHost():

@@ -11,3 +11,4 @@ venv
 !.elasticbeanstalk/*.global.yml
 OLD
 >>>>>>> aws-eb
+venv-py2
