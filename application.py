@@ -130,7 +130,11 @@ def googleConnect(token):
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
            % access_token)
     h = httplib2.Http()
-    result = json.loads(h.request(url, 'GET')[1])
+
+    resp, content = h.request(url, 'GET')
+    str_content = content.decode('utf-8')
+
+    result = json.loads(str_content)
     # If there was an error in the access token info, abort.
     if result.get('error') is not None:
         return {"response": result.get('error'), "status": 500}
@@ -203,20 +207,22 @@ def facebookConnect(token):
         application_id, application_secret, token)
 
     resp, content = h.request(url, 'GET')
+    str_content = content.decode('utf-8')
 
-    if("error" in content):
-        return {"response": json.loads(content)['error']['message'],
+    if("error" in str_content):
+        return {"response": json.loads(str_content)['error']['message'],
                 "status": 401}
 
-    access_token = json.loads(content)['access_token']
+    access_token = json.loads(str_content)['access_token']
 
     # Use token to get user info from API
     url = 'https://graph.facebook.com/v2.8/me?access_token=%s&fields=name,id,email' % access_token
 
     resp, content = h.request(url, 'GET')
+    str_content = content.decode('utf-8')
 
-    if("error" in content):
-        return {"response": json.loads(content)['error']['message'],
+    if("error" in str_content):
+        return {"response": json.loads(str_content)['error']['message'],
                 "status": 401}
 
     data = json.loads(content)
@@ -225,10 +231,11 @@ def facebookConnect(token):
     url = 'https://graph.facebook.com/v2.8/me/picture?access_token=%s&redirect=0&height=200&width=200' % access_token
     h = httplib2.Http()
     resp, content = h.request(url, 'GET')
+    str_content = content.decode('utf-8')
 
-    if("error" in content):
-        return {"response": json.loads(content)['error']['message'], "status": 401}
-    picture_data = json.loads(content)
+    if("error" in str_content):
+        return {"response": json.loads(str_content)['error']['message'], "status": 401}
+    picture_data = json.loads(str_content)
 
     login_session.update({
         'account': "Facebook",
@@ -251,6 +258,7 @@ def facebookDisconnect():
         login_session['user_id'], login_session['access_token'])
     h = httplib2.Http()
     resp, content = h.request(url, 'DELETE')[1]
+    str_content = content.decode('utf-8')
 
     if resp['status'] != '200':
         return {"response": "Failed to revoke token for given user.",
