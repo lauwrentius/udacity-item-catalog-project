@@ -17,7 +17,7 @@ pyasn1==0.4.3
 pyasn1-modules==0.2.1
 python-dateutil==2.7.3
 requests==2.18.4
-rsa==3.4.2
+rsa==4.1
 s3transfer==0.1.13
 six==1.11.0
 SQLAlchemy==1.2.8
